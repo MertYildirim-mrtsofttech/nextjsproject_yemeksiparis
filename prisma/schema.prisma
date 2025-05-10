@@ -1,0 +1,150 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Category {
+  id          Int        @id @default(autoincrement())
+  name        String
+  description String?
+  createdAt   DateTime   @default(now())
+  menuItems   MenuItem[]
+}
+
+model MenuItem {
+  id          Int         @id @default(autoincrement())
+  name        String
+  description String?
+  categoryId  Int
+  price       Float
+  imageUrl    String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  category    Category    @relation(fields: [categoryId], references: [id])
+  orderItems  OrderItem[]
+  discountCodes DiscountCode[] 
+   discountMenuItems DiscountMenuItem[]
+
+
+}
+
+model Order {
+  id              Int         @id @default(autoincrement())
+  customerName    String
+  customerSurname String
+  phone           String
+  address         String
+  email           String
+  totalAmount     Float
+  status          String      @default("pending")
+  paymentStatus   String      @default("unpaid") // New field
+  userId          Int?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  user            User?       @relation(fields: [userId], references: [id])
+  customerNote    String? 
+  orderItems      OrderItem[]
+}
+
+model OrderItem {
+  id         Int      @id @default(autoincrement())
+  menuItemId Int
+  orderId    Int
+  quantity   Int
+  price      Float
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model TempOrder {
+  id          Int      @id @default(autoincrement())
+  customerInfo String   // For SQLite, we don't use @db.Text
+  cartItems    String   // For SQLite, we don't use @db.Text
+  userId       Int?
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime
+}
+
+model User {
+  id               Int             @id @default(autoincrement())
+  firstName        String
+  lastName         String
+  email            String          @unique
+  phone            String?
+  address          String?
+  password         String
+  role             String          @default("user")
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  receivedMessages DirectMessage[] @relation("ReceivedMessages")
+  sentMessages     DirectMessage[] @relation("SentMessages")
+  forumMessages    ForumMessage[]
+  orders           Order[]
+}
+
+model DirectMessage {
+  id         Int      @id @default(autoincrement())
+  senderId   Int
+  receiverId Int
+  message    String
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  imagePath  String?
+  receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  sender     User     @relation("SentMessages", fields: [senderId], references: [id])
+}
+
+model ForumMessage {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  message   String
+  createdAt DateTime @default(now())
+  imagePath String?
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Banner {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  imageUrl    String
+  linkUrl     String?
+  isActive    Boolean  @default(true)
+  order       Int      @default(0)  // For controlling display order
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model DiscountCode {
+  id          Int       @id @default(autoincrement())
+  code        String    @unique
+  description String?
+  amount      Float     // Discount amount (percentage or fixed amount)
+  isPercent   Boolean   @default(true) // If true, amount is percentage; if false, amount is fixed
+  minOrderAmount Float? // Minimum order amount required to use the discount
+  maxUses     Int?      // Maximum number of times the code can be used (null means unlimited)
+  usedCount   Int       @default(0) // Number of times the code has been used
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean   @default(true)
+  menuItemId  Int?      // Optional: If the discount applies to a specific menu item
+  menuItem    MenuItem? @relation(fields: [menuItemId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  discountMenuItems DiscountMenuItem[] // Çoklu ürün bağlantısı
+
+}
+
+model DiscountMenuItem {
+  discountCodeId Int
+  menuItemId     Int
+
+  discountCode   DiscountCode @relation(fields: [discountCodeId], references: [id])
+  menuItem       MenuItem     @relation(fields: [menuItemId], references: [id])
+
+  @@id([discountCodeId, menuItemId])
+}
